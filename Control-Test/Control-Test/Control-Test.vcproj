@@ -169,6 +169,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\fist.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\libevent_test.cpp"
 				>
 			</File>
