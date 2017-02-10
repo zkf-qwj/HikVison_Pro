@@ -1,0 +1,37 @@
+{
+	"Devices":	[{
+			"ID":	0,
+			"SerialNumber":	"DS-TCG225 C20170117BF710656356",
+			"ChannelNumber":	1,
+			"StartChannel":	1,
+			"AlarmInNum":	2,
+			"AlarmOutNum":	3,
+			"IPChanNum":	0,
+			"MirrorChanNum":	0,
+			"StartMirrorChanNo":	0,
+			"LocalNodeName":	"в╔ед",
+			"DeviceType":	35,
+			"DiskNum":	1,
+			"LoginUserName":	"admin",
+			"LoginUserPwd":	"@vsea.tv",
+			"DeviceIP":	"192.168.1.66",
+			"DeviceMultiIP":	"0.0.0.0",
+			"DevicePort":	8000,
+			"DeviceName":	"ITCCAM",
+			"Channels":	[{
+					"ChanID":	0,
+					"DeviceIndex":	0,
+					"ChanIndex":	0,
+					"ChanName":	"Camera1",
+					"Protocol":	0,
+					"PicResolution":	0,
+					"PicQuality":	0,
+					"Enable":	1,
+					"PreviewMode":	0,
+					"PreviewProtocolType":	0,
+					"VideoCodingType":	0,
+					"StreamType":	0,
+					"LinkMode":	0
+				}]
+		}]
+}

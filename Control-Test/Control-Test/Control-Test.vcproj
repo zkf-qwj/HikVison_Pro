@@ -40,7 +40,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="&quot;C:\Users\gst\Desktop\海康设备对接\门禁控制主机\Control-Test\Control-Test\include\event&quot;;&quot;C:\Users\gst\Desktop\海康设备对接\门禁控制主机\Control-Test\Control-Test\include\HIK&quot;;&quot;C:\Users\gst\Desktop\海康设备对接\门禁控制主机\Control-Test\Control-Test\include&quot;"
+				AdditionalIncludeDirectories="&quot;C:\Users\gst\Desktop\海康设备对接\门禁控制主机\HikVison_Pro\Control-Test\Control-Test\include\car&quot;;&quot;C:\Users\gst\Desktop\海康设备对接\门禁控制主机\HikVison_Pro\Control-Test\Control-Test\include\event&quot;;&quot;C:\Users\gst\Desktop\海康设备对接\门禁控制主机\HikVison_Pro\Control-Test\Control-Test\include\HIK&quot;;&quot;C:\Users\gst\Desktop\海康设备对接\门禁控制主机\HikVison_Pro\Control-Test\Control-Test\include&quot;"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="3"
@@ -59,7 +59,7 @@
 			<Tool
 				Name="VCLinkerTool"
 				AdditionalDependencies="ws2_32.lib"
-				AdditionalLibraryDirectories="&quot;C:\Users\gst\Desktop\海康设备对接\门禁控制主机\Control-Test\Control-Test\lib\event&quot;;&quot;C:\Users\gst\Desktop\海康设备对接\门禁控制主机\Control-Test\Control-Test\lib\HIK&quot;;&quot;C:\Users\gst\Desktop\海康设备对接\门禁控制主机\Control-Test\Control-Test\lib&quot;"
+				AdditionalLibraryDirectories="&quot;C:\Users\gst\Desktop\海康设备对接\门禁控制主机\HikVison_Pro\Control-Test\Control-Test\lib\car&quot;;&quot;C:\Users\gst\Desktop\海康设备对接\门禁控制主机\HikVison_Pro\Control-Test\Control-Test\lib\event&quot;;&quot;C:\Users\gst\Desktop\海康设备对接\门禁控制主机\HikVison_Pro\Control-Test\Control-Test\lib\HIK&quot;"
 				GenerateDebugInformation="true"
 				TargetMachine="1"
 			/>
@@ -179,11 +179,19 @@
 			UniqueIdentifier="{93995380-89BD-4b04-88EB-625FBE52EBFB}"
 			>
 			<File
-				RelativePath=".\include\event2\buffer.h"
+				RelativePath=".\include\event\event2\buffer.h"
 				>
 			</File>
 			<File
-				RelativePath=".\include\event2\bufferevent.h"
+				RelativePath=".\include\event\event2\bufferevent.h"
+				>
+			</File>
+			<File
+				RelativePath=".\include\car\CarNumber.h"
+				>
+			</File>
+			<File
+				RelativePath=".\include\common.h"
 				>
 			</File>
 			<File
@@ -199,11 +207,23 @@
 				>
 			</File>
 			<File
+				RelativePath=".\include\event\event2\event.h"
+				>
+			</File>
+			<File
 				RelativePath=".\HCNetSDK.h"
 				>
 			</File>
 			<File
-				RelativePath=".\include\event2\listener.h"
+				RelativePath=".\include\event\event2\http.h"
+				>
+			</File>
+			<File
+				RelativePath=".\include\includes.h"
+				>
+			</File>
+			<File
+				RelativePath=".\include\event\event2\listener.h"
 				>
 			</File>
 			<File
@@ -211,7 +231,7 @@
 				>
 			</File>
 			<File
-				RelativePath=".\include\event2\util.h"
+				RelativePath=".\include\event\event2\util.h"
 				>
 			</File>
 		</Filter>
