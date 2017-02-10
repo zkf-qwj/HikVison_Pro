@@ -7,6 +7,15 @@
 #include <iostream>
 using namespace std;
 
+#include "json/autolink.h"
+#include "json/config.h"
+#include "json/features.h"
+#include "json/forwards.h"
+#include "json/json.h"
+#include "json/reader.h"
+#include "json/value.h"
+#include "json/writer.h"
+
 #define WIN32
 #include "event2/bufferevent.h"
 #include "event2/buffer.h"
@@ -17,6 +26,7 @@ using namespace std;
 #pragma comment(lib,"libevent_core.lib")
 #pragma comment(lib,"libevent_extras.lib")
 #pragma comment(lib,"libevent.lib")
+#pragma comment(lib,"json_vc71_libmtd.lib")
 
 #include "HCNetSDK.h"
 #pragma comment(lib,"HCNetSDk.lib") 
@@ -33,7 +43,7 @@ typedef struct {
 	char *ip[16];
 } pthread_t;
 #define MAX_DEVICE_LEN 20
-
+#define MAX_HTTP_LEN 1024 * 6
 typedef struct 
 {
 	char *sDVRIP[MAX_DEVICE_LEN];
@@ -44,5 +54,7 @@ typedef struct
 }Login_params;
 int init_win_socket();
 int Login_Init(Login_params *LP_Params,WORD num,LONG *lOutUserID);
-int test(char *id, char *time, int flags, char *ip);
+int HandleCarNumber(char *id, char *time, int flags, char *ip);
+int send_recv_http(SOCKET sclient,char *jscontext,char *Out_Recv,const char *ip, const char *port);
+int connect_Hik(SOCKET sclient, char *ip, int port);
 #endif
