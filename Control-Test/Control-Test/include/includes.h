@@ -54,7 +54,10 @@ typedef struct
 }Login_params;
 int init_win_socket();
 int Login_Init(Login_params *LP_Params,WORD num,LONG *lOutUserID);
-int HandleCarNumber(char *id, char *time, int flags, char *ip);
-int send_recv_http(SOCKET sclient,char *jscontext,char *Out_Recv,const char *ip, const char *port);
-int connect_Hik(SOCKET sclient, char *ip, int port);
+int HandleCarNumber(char *id, char *time, int flags, char *ip);//出入口回调函数
+int connect_Hik(SOCKET *sclient, char *ip, int port);//连接http服务器
+int send_recv_http(SOCKET sclient,char *jscontext,char *Out_Recv,const char *ip, const char *port);//发送http请求，并接收请求结果
+int GetHttpBody(struct evhttp_request *req, char *outBody,int outLen);//获取http body
+void CALLBACK CallBack(DWORD dwType, void *lpBuffer, DWORD dwBufLen, void *pUserData);//长连接StartRemoteConfigint
+int test();
 #endif
