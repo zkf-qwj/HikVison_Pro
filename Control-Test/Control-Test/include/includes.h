@@ -15,6 +15,7 @@ using namespace std;
 #include "json/reader.h"
 #include "json/value.h"
 #include "json/writer.h"
+#include "md5.h"
 
 #define WIN32
 #include "event2/bufferevent.h"
@@ -59,5 +60,6 @@ int connect_Hik(SOCKET *sclient, char *ip, int port);//连接http服务器
 int send_recv_http(SOCKET sclient,char *jscontext,char *Out_Recv,const char *ip, const char *port);//发送http请求，并接收请求结果
 int GetHttpBody(struct evhttp_request *req, char *outBody,int outLen);//获取http body
 void CALLBACK CallBack(DWORD dwType, void *lpBuffer, DWORD dwBufLen, void *pUserData);//长连接StartRemoteConfigint
+void CALLBACK CallBack_v1(DWORD dwType, void *lpBuffer, DWORD dwBufLen, void *pUserData);
 int test();
 #endif

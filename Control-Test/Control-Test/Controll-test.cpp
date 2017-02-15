@@ -6,10 +6,15 @@ LONG g_DlUserID = 0;
 LONG g_ClUserID = 0;
 short          http_port = 8081;
 char          *http_addr = "192.168.1.106";
+const char *salt= "woareateam!!!";
 struct event_base *base;
 struct evhttp *http_server;
+NET_DVR_CARD_CFG_V50* g_pCardCfg;//获取数据
 void generic_handler(struct evhttp_request *req, void *arg)
 {
+	char md5buf[64] = {0};
+	int  timestamp = 0;
+	timestamp = time(0);
 	Json::Value root,rRoot;
 	Json::FastWriter fw;
 	Json::Reader reader;
@@ -36,20 +41,38 @@ void generic_handler(struct evhttp_request *req, void *arg)
 		strcpy(httpstatus,"parse http body faild");
 		goto SendHttp;
 	}
-	if (strstr(uri,"door")){
-		if (strstr(uri,"control")){
-			printf("ip:%s,channel:%s,cardnum:%s,status:%s\n",rRoot["ip"].asString().c_str(),
+	if ((timestamp - atoi(rRoot["timestamp"].asString().c_str())) > 300){
+		strcpy(httpstatus,"Request timed out faild");
+		goto SendHttp;
+	}
+	strcpy(md5buf,rRoot["timestamp"].asString().c_str());
+	strcat(md5buf+strlen(md5buf),salt);
+	if (strcmp(rRoot["token"].asString().c_str(),md5(md5buf).c_str()) != 0){
+		strcpy(httpstatus,"Authentication failed");
+		goto SendHttp;
+	}
+	if (strstr(uri,"door")){ //门禁控制主机接口
+		if (strstr(uri,"control")){ 
+			printf("ip:%s,number:%s,commond:%s\n",rRoot["ip"].asString().c_str(),
 				rRoot["channel"].asString().c_str(),
-				rRoot["cardnum"].asString().c_str(),
-				rRoot["status"].asString().c_str()
+				rRoot["commond"].asString().c_str()
 				);
+			int i = 0;
+			for (i = 0; i < Thread_Params->wLen; i++){
+				if (strcmp(rRoot["ip"].asString().c_str(),Thread_Params->ip[i]) == 0)
+					break;
+			}
+			if (NET_DVR_ControlGateway(Thread_Params->lUserID[i],atoi(rRoot["channel"].asString().c_str()),atoi(rRoot["commond"].asString().c_str())) == FALSE){
+				strcpy(httpstatus,"door control faild");
+				goto SendHttp;
+			}
 		}else if (strstr(uri,"setconfig")){
 
 		}else if (strstr(uri,"getconfig")){
 
 		}
 	}else if (strstr(evhttp_request_get_uri(req),"card")){
-
+		
 	}
 SendHttp:
 	root["HttpStatus"] = Json::Value(httpstatus);
@@ -63,7 +86,9 @@ SendHttp:
 
 unsigned int __stdcall DoorThreadFun(PVOID pM)
 {	
+
 	test();
+
 	printf(" child thread beginthread ID:%d,g_count:%d\n",GetCurrentThreadId(),g_count);
 	return 0;
 }
@@ -76,13 +101,13 @@ unsigned int __stdcall CameraThreadFun(PVOID pM)
 	iRet = pThis->InitSvc();
 	m_login = pThis->InitCarNunber();
 	pThis->StartCar(HandleCarNumber);
-while(1);
+getchar();
 	if (pThis)
 	{
 		delete pThis;
 		pThis = NULL;
-	}
-*/
+	}*/
+
 	return 0;
 }
 unsigned int __stdcall evThreadFun(PVOID pM)
@@ -104,6 +129,7 @@ unsigned int __stdcall evThreadFun(PVOID pM)
 	}
 	Thread_Params->lUserID[0] = lUserID;
 	Thread_Params->ip[0] = "192.168.1.64";
+	Thread_Params->wLen = 1;
 	/*
 	lUserID = NET_DVR_Login_V30("192.168.1.66", 8000, "admin", "@vsea.tv", &struDeviceInfo);
 	if (lUserID < 0)
@@ -300,102 +326,78 @@ int GetHttpBody(struct evhttp_request *req, char *outBody,int outLen){
 
 int test()
 {
+	//初始化
 	NET_DVR_Init();
-	NET_DVR_SetConnectTime(2000, 1);
-	NET_DVR_DEVICEINFO_V30 struDeviceInfo;
-	LONG lUserID = NET_DVR_Login_V30("192.168.1.64", 8000, "admin", "@vsea.tv", &struDeviceInfo);
-	if (lUserID < 0)
-	{
-		printf("Door Login error, %d\n", NET_DVR_GetLastError());
+	//设置连接时间和重连时间
+	NET_DVR_SetConnectTime(2000,1);
+	NET_DVR_SetReconnect(10000,true);
+	//-------------------------------
+	//注册设备
+	LONG lUserID,lHandle;
+	NET_DVR_USER_LOGIN_INFO struLoginInfo;
+	struLoginInfo.bUseAsynLogin = 0;//同步登录方式
+	strcpy(struLoginInfo.sDeviceAddress,"192.168.1.68");
+	struLoginInfo.wPort = 8000;
+	strcpy(struLoginInfo.sUserName,"admin");
+	strcpy(struLoginInfo.sPassword,"@vsea.tv");
+	//设备信息，输出参数
+	NET_DVR_DEVICEINFO_V40 struDeviceIndoV40 = {0};
+	if ((lUserID = NET_DVR_Login_V40(&struLoginInfo,&struDeviceIndoV40)) < 0){
+		printf("Login faild,error code:%d\n",NET_DVR_GetLastError());
 		NET_DVR_Cleanup();
 		return -1;
 	}
-
-	NET_DVR_CARD_CFG_COND card_cfg;
-	card_cfg.dwSize = sizeof(card_cfg);
-	card_cfg.dwCardNum = 0;
-	card_cfg.byCheckCardNo = 1;
-	card_cfg.wLocalControllerID = 0;
-	for(int i = 0; i < sizeof(card_cfg.byRes)/sizeof(card_cfg.byRes[0]); i++){
-		card_cfg.byRes[i] = 0;
+	NET_DVR_CARD_CFG_COND struCond = {0};
+	struCond.dwSize  = sizeof(struCond);
+	struCond.dwCardNum = 3;
+	struCond.wLocalControllerID = 0;
+	for (int i = 0; i < sizeof(struCond.byRes1)/sizeof(struCond.byRes1[0]); i++){
+		struCond.byRes1[i] = 0;
 	}
-	for(int i = 0; i < sizeof(card_cfg.byRes1)/sizeof(card_cfg.byRes1[0]); i++){
-		card_cfg.byRes1[i] = 0;
+	lHandle = NET_DVR_StartRemoteConfig(lUserID,NET_DVR_GET_CARD_CFG_V50,&struCond,sizeof(struCond),CallBack, NULL);
+	if (lHandle == -1)
+	{
+		printf("StartRemote faild:errno:%d\n",NET_DVR_GetLastError());
+		return -1;
 	}
-	char UserData[10240] = {0};
-	LONG lHandle = 0;
+	else
+	{
+		printf("StartReemote success\n");
+	}
 	/**/
-	if ( (lHandle = NET_DVR_StartRemoteConfig(lUserID,NET_DVR_SET_CARD_CFG,(LPVOID)&card_cfg,(DWORD)sizeof(card_cfg),(fRemoteConfigCallback)CallBack,&lHandle)) < 0){
-		printf("start remoteConfig error:%d\n",NET_DVR_GetLastError());
-		return -1;
+	NET_DVR_CARD_CFG SendCardCfg;
+	SendCardCfg.dwSize = sizeof(SendCardCfg);
+	SendCardCfg.dwModifyParamType = CARD_PARAM_CARD_VALID;
+	strcpy((char *)SendCardCfg.byCardNo,"3069606104");
+	printf("------number:%s\n",SendCardCfg.byCardNo);
+	SendCardCfg.byCardValid = 0;
+	for (int i = 0; i < sizeof(SendCardCfg.byRes2)/sizeof(SendCardCfg.byRes2[0]); i++){
+		SendCardCfg.byRes2[i] = 0;
 	}
-	NET_DVR_CARD_CFG pSendBuf;
-	pSendBuf.dwSize = sizeof(pSendBuf);
-	pSendBuf.dwModifyParamType = CARD_PARAM_CARD_VALID;
-	strcpy_s((char *)pSendBuf.byCardNo, ACS_CARD_NO_LEN, "120");
-	pSendBuf.byCardValid = 1;
-	pSendBuf.byCardType = 1;
-	pSendBuf.byLeaderCard = 0;//非首卡
-	pSendBuf.byRes1 = 0;
-	pSendBuf.dwDoorRight = 1;
-	pSendBuf.struValid.byEnable = 0;
-	pSendBuf.dwMaxSwipeTime  =0;
-	/**/
-	if (NET_DVR_SendRemoteConfig(lHandle,ENUM_ACS_SEND_DATA,(char *)&pSendBuf,sizeof(pSendBuf)) == FALSE){
-		printf("SendRemoteCfg error:%d\n",NET_DVR_GetLastError());
-		return -1;
-	}
-
-	card_cfg.dwSize = sizeof(card_cfg);
-	card_cfg.dwCardNum = 1;
-	card_cfg.byCheckCardNo = 1;
-	card_cfg.wLocalControllerID = 0;
-	for(int i = 0; i < sizeof(card_cfg.byRes)/sizeof(card_cfg.byRes[0]); i++){
-		card_cfg.byRes[i] = 0;
-	}
-	for(int i = 0; i < sizeof(card_cfg.byRes1)/sizeof(card_cfg.byRes1[0]); i++){
-		card_cfg.byRes1[i] = 0;
-	}
-
-	if ( (lHandle = NET_DVR_StartRemoteConfig(lUserID,NET_DVR_GET_CARD_CFG,(LPVOID)&card_cfg,(DWORD)sizeof(card_cfg),(fRemoteConfigCallback)CallBack,&lHandle)) < 0){
-		printf("start RemoteConfig error:%d\n",NET_DVR_GetLastError());
-		return -1;
-	}
-	
-	NET_DVR_CARD_CFG_SEND_DATA Get_Card_Cfg;
-	Get_Card_Cfg.dwSize = sizeof(Get_Card_Cfg);
-	strcpy_s((char *)Get_Card_Cfg.byCardNo, ACS_CARD_NO_LEN, "123");
-	for (int i = 0; i < sizeof(Get_Card_Cfg.byRes)/sizeof(Get_Card_Cfg.byRes[0]); i++)
-		Get_Card_Cfg.byRes[i] = 0;
-
-	if (NET_DVR_SendRemoteConfig(lHandle,ENUM_ACS_SEND_DATA,(char *)&Get_Card_Cfg,sizeof(Get_Card_Cfg)) == FALSE){
-		printf("SendRemoteCfg error:%d\n",NET_DVR_GetLastError());
-		return -1;
-	}
-	printf("file end\n");
-	//获取卡参数
 	getchar();
-	return -1;
 }
 void CALLBACK CallBack(DWORD dwType, void *lpBuffer, DWORD dwBufLen, void *pUserData)
 {
 	LONG UserData = 0;
 	int dwStatus;
-	UserData = *((LONG *)pUserData);
-
+	//UserData = *((LONG *)pUserData);
+	struct Status_t *CardError;
+	CardError = (struct Status_t *)lpBuffer;
 	switch(dwType){
 		case NET_SDK_CALLBACK_TYPE_STATUS:
 			printf("NET_SDK_CALLBACK_TYPE_STATUS\n");
-			dwStatus = *(int *)lpBuffer;//前四个字节
+			dwStatus = *((int *)lpBuffer);//前四个字节
 			switch(dwStatus){
 				case NET_SDK_CALLBACK_STATUS_SUCCESS:
 					printf("SUCCESS\n");
 					break;
 				case NET_SDK_CALLBACK_STATUS_PROCESSING:
+					
 					printf("NET_SDK_CALLBACK_STATUS_PROCESSING:%d\n",NET_DVR_GetLastError());
 					break;
 				case NET_SDK_CALLBACK_STATUS_FAILED:
 					printf("NET_SDK_CALLBACK_STATUS_FAILED:%d\n",NET_DVR_GetLastError());
+				
 					break;
 				case NET_SDK_CALLBACK_STATUS_EXCEPTION:
 					printf("NET_SDK_CALLBACK_STATUS_EXCEPTION:%d\n",NET_DVR_GetLastError());
@@ -412,15 +414,15 @@ void CALLBACK CallBack(DWORD dwType, void *lpBuffer, DWORD dwBufLen, void *pUser
 			break;
 		case NET_SDK_CALLBACK_TYPE_DATA:
 			printf("NET_SDK_CALLBACK_TYPE_DATA\n");
+			g_pCardCfg = (NET_DVR_CARD_CFG_V50*)lpBuffer;
+				printf("------CardNumber:%s\n",g_pCardCfg->byCardNo);
 			break;
 		default:
 			printf("default\n");
 			break;
 	}
-	/**/
-	printf("CallBack lHandle:%d\n",UserData);
-	if (NET_DVR_StopRemoteConfig(UserData) == FALSE){
-	printf("NET_DVR_StopRemoteConfig error:%d\n",NET_DVR_GetLastError());
-	return ;
-	}
+	/*
+	printf("CallBack lHandle:%d\n",UserData);*/
+	
+		
 }
