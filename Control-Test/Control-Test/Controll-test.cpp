@@ -10,6 +10,7 @@ const char *salt= "woareateam!!!";
 struct event_base *base;
 struct evhttp *http_server;
 NET_DVR_CARD_CFG_V50* g_pCardCfg;//获取数据
+
 void generic_handler(struct evhttp_request *req, void *arg)
 {
 	char md5buf[64] = {0};
@@ -349,12 +350,13 @@ int test()
 	}
 	NET_DVR_CARD_CFG_COND struCond = {0};
 	struCond.dwSize  = sizeof(struCond);
-	struCond.dwCardNum = 3;
-	struCond.wLocalControllerID = 0;
+	struCond.dwCardNum = 1;
+	struCond.byCheckCardNo = 1;
+	//struCond.wLocalControllerID = 2;
 	for (int i = 0; i < sizeof(struCond.byRes1)/sizeof(struCond.byRes1[0]); i++){
 		struCond.byRes1[i] = 0;
 	}
-	lHandle = NET_DVR_StartRemoteConfig(lUserID,NET_DVR_GET_CARD_CFG_V50,&struCond,sizeof(struCond),CallBack, NULL);
+	lHandle = NET_DVR_StartRemoteConfig(lUserID,NET_DVR_SET_CARD_CFG_V50,&struCond,sizeof(struCond),CallBack, NULL);
 	if (lHandle == -1)
 	{
 		printf("StartRemote faild:errno:%d\n",NET_DVR_GetLastError());
@@ -362,25 +364,47 @@ int test()
 	}
 	else
 	{
-		printf("StartReemote success\n");
+		printf("StartRemote success\n");
 	}
+
 	/**/
-	NET_DVR_CARD_CFG SendCardCfg;
+	NET_DVR_CARD_CFG_V50 SendCardCfg = {0};
 	SendCardCfg.dwSize = sizeof(SendCardCfg);
-	SendCardCfg.dwModifyParamType = CARD_PARAM_CARD_VALID;
-	strcpy((char *)SendCardCfg.byCardNo,"3069606104");
-	printf("------number:%s\n",SendCardCfg.byCardNo);
-	SendCardCfg.byCardValid = 0;
-	for (int i = 0; i < sizeof(SendCardCfg.byRes2)/sizeof(SendCardCfg.byRes2[0]); i++){
-		SendCardCfg.byRes2[i] = 0;
+	SendCardCfg.dwModifyParamType = CARD_PARAM_CARD_VALID|CARD_PARAM_VALID|CARD_PARAM_CARD_TYPE;
+	BYTE CardNo[32] = {0};
+	strcpy((char *)CardNo,"1885276450");
+	memcpy((char *)SendCardCfg.byCardNo,CardNo,32);
+	SendCardCfg.byCardValid = true;
+	SendCardCfg.byCardType = 1;
+	SendCardCfg.byLeaderCard = 0;
+	SendCardCfg.struValid.byEnable = 1;
+	SendCardCfg.struValid.struBeginTime.wYear = 2000;
+	SendCardCfg.struValid.struBeginTime.byMonth = 1;
+	SendCardCfg.struValid.struBeginTime.byDay = 1;
+	SendCardCfg.struValid.struBeginTime.byHour = 0;
+	SendCardCfg.struValid.struBeginTime.byMinute = 0;
+	SendCardCfg.struValid.struBeginTime.bySecond = 0;
+	SendCardCfg.struValid.struEndTime.wYear = 2017;
+	SendCardCfg.struValid.struEndTime.byMonth = 02;
+	SendCardCfg.struValid.struEndTime.byDay = 16;
+	SendCardCfg.struValid.struEndTime.byHour = 0;
+	SendCardCfg.struValid.struEndTime.byMinute = 0;
+	SendCardCfg.struValid.struEndTime.bySecond = 0;
+	if (NET_DVR_SendRemoteConfig(lHandle,ENUM_ACS_SEND_DATA,(char *)&SendCardCfg,sizeof(SendCardCfg)) == FALSE){
+		printf("-------SendRemoteConfig faild:errno:%d\n",NET_DVR_GetLastError());
+		return -1;
 	}
 	getchar();
 }
+
+
+
+
+
 void CALLBACK CallBack(DWORD dwType, void *lpBuffer, DWORD dwBufLen, void *pUserData)
 {
 	LONG UserData = 0;
 	int dwStatus;
-	//UserData = *((LONG *)pUserData);
 	struct Status_t *CardError;
 	CardError = (struct Status_t *)lpBuffer;
 	switch(dwType){
@@ -397,7 +421,7 @@ void CALLBACK CallBack(DWORD dwType, void *lpBuffer, DWORD dwBufLen, void *pUser
 					break;
 				case NET_SDK_CALLBACK_STATUS_FAILED:
 					printf("NET_SDK_CALLBACK_STATUS_FAILED:%d\n",NET_DVR_GetLastError());
-				
+					printf("----------------status:%d,errno:%d,CarNo:%s\n",*((int *)lpBuffer),*((int *)(((char *)lpBuffer) + 4)),((char *)lpBuffer+8));
 					break;
 				case NET_SDK_CALLBACK_STATUS_EXCEPTION:
 					printf("NET_SDK_CALLBACK_STATUS_EXCEPTION:%d\n",NET_DVR_GetLastError());
@@ -415,14 +439,10 @@ void CALLBACK CallBack(DWORD dwType, void *lpBuffer, DWORD dwBufLen, void *pUser
 		case NET_SDK_CALLBACK_TYPE_DATA:
 			printf("NET_SDK_CALLBACK_TYPE_DATA\n");
 			g_pCardCfg = (NET_DVR_CARD_CFG_V50*)lpBuffer;
-				printf("------CardNumber:%s\n",g_pCardCfg->byCardNo);
+			printf("------CardNumber:%s,CardVaild:%d,byCardType   :%d\n",g_pCardCfg->byCardNo,g_pCardCfg->byCardValid,g_pCardCfg->byCardType );
 			break;
 		default:
 			printf("default\n");
 			break;
 	}
-	/*
-	printf("CallBack lHandle:%d\n",UserData);*/
-	
-		
 }
