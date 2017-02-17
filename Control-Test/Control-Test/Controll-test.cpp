@@ -15,7 +15,7 @@ map<char*, char*>   my_Map;
 void generic_handler(struct evhttp_request *req, void *arg)
 {
 	char md5buf[64] = {0};
-	int  timestamp = 0;
+	time_t  timestamp = 0;
 	timestamp = time(0);
 	Json::Value root,rRoot;
 	Json::FastWriter fw;
@@ -25,7 +25,9 @@ void generic_handler(struct evhttp_request *req, void *arg)
 	char body[4096] = {0};
 	int iRet = 0;
 	char httpstatus[1024] = {0};
-	strcpy(httpstatus,"success");
+	string Str;
+
+	strcpy_s(httpstatus,sizeof(httpstatus),"success");
 	struct evbuffer *buf = evbuffer_new();
 	if(!buf)
 	{  
@@ -35,29 +37,30 @@ void generic_handler(struct evhttp_request *req, void *arg)
 	const char *uri = evhttp_request_get_uri(req);
 	if ((iRet = GetHttpBody(req,body,sizeof(body))) < 0){
 		printf("Get Http Body error :%d\n",iRet);
-		strcpy(httpstatus,"Get http body faild");
+		strcpy_s(httpstatus,sizeof(httpstatus),"Get http body faild");
 		goto SendHttp;
 	}
 
 	evhttp_add_header(evhttp_request_get_output_headers(req), "Content-Type", "application/json; charset=utf-8");
 	if (reader.parse(body, rRoot) == false){
 		printf("parse http body faild\n");
-		strcpy(httpstatus,"parse http body faild");
+		strcpy_s(httpstatus,sizeof(httpstatus),"parse http body faild");
 		goto SendHttp;
 	}
-	printf("---timestamp:%d\n",rRoot["timestamp"].asString().c_str());
+	Str = rRoot["timestamp"].asString();
+	printf("---timestamp:%s\n",Str.c_str());
 	if (rRoot["timestamp"].asString().c_str() == NULL){
-		strcpy(httpstatus,"get timestamp faild");
+		strcpy_s(httpstatus,sizeof(httpstatus),"get timestamp faild");
 		goto SendHttp;
 	}
-	if ((timestamp - atoi(rRoot["timestamp"].asString().c_str())) > 300){
-		strcpy(httpstatus,"Request timed out faild");
+	if ((timestamp - atol(rRoot["timestamp"].asString().c_str())) > 300){
+		strcpy_s(httpstatus,sizeof(httpstatus),"Request timed out faild");
 		goto SendHttp;
 	}
 	strcpy(md5buf,rRoot["timestamp"].asString().c_str());
 	strcat(md5buf+strlen(md5buf),salt);
 	if (strcmp(rRoot["token"].asString().c_str(),md5(md5buf).c_str()) != 0){
-		strcpy(httpstatus,"Authentication failed");
+		strcpy_s(httpstatus,sizeof(httpstatus),"Authentication failed");
 		goto SendHttp;
 	}
 
@@ -73,7 +76,7 @@ void generic_handler(struct evhttp_request *req, void *arg)
 					break;
 			}
 			if (NET_DVR_ControlGateway(Thread_Params->lUserID[i],atoi(rRoot["channel"].asString().c_str()),atoi(rRoot["commond"].asString().c_str())) == FALSE){
-				strcpy(httpstatus,"door control faild");
+				strcpy_s(httpstatus,sizeof(httpstatus),"door control faild");
 				goto SendHttp;
 			}
 		}else if (strstr(uri,"setconfig")){
@@ -87,9 +90,11 @@ void generic_handler(struct evhttp_request *req, void *arg)
 			NET_DVR_CARD_CFG_V50 struCond = {0};
 			struCond.dwSize = sizeof(struCond);
 			if (HandleCardSet(rRoot,&struCond) == false){
-				strcpy(httpstatus,"get HandleCardSet faild");
+				strcpy_s(httpstatus,sizeof(httpstatus),"get HandleCardSet faild");
 				goto SendHttp;
 			}
+			printf("--------------CardVild:%d\n",struCond.byCardValid = 0);
+			printf("----------type:%d\n",struCond.dwModifyParamType);
 			int i = 0;
 			for (i = 0; i < Thread_Params->wLen; i++){
 				if (strcmp(rRoot["ip"].asString().c_str(),Thread_Params->ip[i]) == 0){
@@ -99,7 +104,7 @@ void generic_handler(struct evhttp_request *req, void *arg)
 			LONG lHandle = 0;
 			lHandle = OperatCardNoFun(Thread_Params->lUserID[i],CallBack,NET_DVR_SET_CARD_CFG_V50);
 			if (NET_DVR_SendRemoteConfig(lHandle,ENUM_ACS_SEND_DATA,(char *)&struCond,sizeof(struCond)) == FALSE){
-				strcpy(httpstatus,"set cardparam faild");
+				strcpy_s(httpstatus,sizeof(httpstatus),"set cardparam faild");
 				goto SendHttp;
 			}
 		}else if (strstr(uri,"getlist")){
@@ -108,6 +113,7 @@ void generic_handler(struct evhttp_request *req, void *arg)
 			
 		}
 	}
+	printf("-------------------------------\n");
 SendHttp:
 	root["HttpStatus"] = Json::Value(httpstatus);
 	std::string strData = fw.write(root);
@@ -129,7 +135,7 @@ unsigned int __stdcall DoorThreadFun(PVOID pM)
 	NET_DVR_SetReconnect(10000,true);
 	//-------------------------------
 	//注册设备
-	LONG lUserID,lHandle;
+	LONG lUserID = 0,lHandle = 0;
 	NET_DVR_USER_LOGIN_INFO struLoginInfo;
 	struLoginInfo.bUseAsynLogin = 0;//同步登录方式
 	strcpy(struLoginInfo.sDeviceAddress,"192.168.1.68");
@@ -159,7 +165,7 @@ unsigned int __stdcall DoorThreadFun(PVOID pM)
 }
 unsigned int __stdcall CameraThreadFun(PVOID pM)
 {		
-/**/
+/*
 	int iRet = -1;
 	long m_login = 0;
 	CarNumber *pThis = new CarNumber();
@@ -171,7 +177,7 @@ getchar();
 	{
 		delete pThis;
 		pThis = NULL;
-	}
+	}*/
 
 	return 0;
 }
@@ -235,11 +241,8 @@ void main()
 	init_win_socket();
 	NET_DVR_Init();
 	NET_DVR_SetConnectTime(2000, 1);
-	LONG lUserID;
 	short          http_port = 8081;
 	char          *http_addr = "192.168.1.106";
-	NET_DVR_DEVICEINFO_V30 struDeviceInfo;
-
 	//创建线程
 	const int THREAD_NUM = 3;
 	HANDLE handle[THREAD_NUM]; 
@@ -286,17 +289,17 @@ int HandleCarNumber(char *id, char *time, int flags, char *ip)
 	}
 	char ctx[1024] = {0};
 	sprintf(ctx,"{\"id\":\"%s\",\"time\":\"%s\",\"flags\":%d,\"ip\":\"%s\"}",id,time,flags,ip);
-	send_recv_http(sclient,ctx,recvbuf,"192.168.1.104","80");
+	send_recv_http(sclient,ctx,recvbuf,"192.168.1.104","80","/park/index.php/api/in","Content-Type: application/x-www-form-urlencoded");
 	closesocket(sclient);
 	WSACleanup();
 	return 1;
 }
 //封装  send http recv
-int send_recv_http(SOCKET sclient,char *jscontext,char *Out_Recv,const char *ip, const char *port)
+int send_recv_http(SOCKET sclient,char *jscontext,char *Out_Recv,const char *ip, const char *port, const char *path,const char *contenttype)
 {	
 	char sendbuf[MAX_HTTP_LEN] = {0};
 	char recvbuf[MAX_HTTP_LEN] = {0};
-	sprintf(sendbuf,"POST /park/index.php/api/in HTTP/1.1\r\nHost: %s:%s\r\nAccept: */*\r\nContent-Type: application/x-www-form-urlencoded\r\nContent-Length: %d\r\n\r\n%s",ip,port,strlen(jscontext),jscontext);
+	sprintf(sendbuf,"POST %s HTTP/1.1\r\nHost: %s:%s\r\nAccept: */*\r\n%s\r\nContent-Length: %d\r\n\r\n%s",path,ip,port,contenttype,strlen(jscontext),jscontext);
 	if (send(sclient,sendbuf,strlen(sendbuf),0) < 0){
 		printf("send_recv_http send error\n");
 		return -1;
@@ -451,6 +454,7 @@ int test()
 		printf("-------SendRemoteConfig faild:errno:%d\n",NET_DVR_GetLastError());
 		return -1;
 	}
+	return 0;
 }
 void CALLBACK CallBack(DWORD dwType, void *lpBuffer, DWORD dwBufLen, void *pUserData)
 {
@@ -654,49 +658,84 @@ void GetDateTime(char *aTime, NET_DVR_TIME_EX *Date)
 BOOL CALLBACK msgCallBack(LONG lCommand, NET_DVR_ALARMER *pAlarmer, char *pAlarmInfo, DWORD dwBufLen, void* pUser)
 {
 	NET_DVR_ACS_ALARM_INFO *alarminfo= (NET_DVR_ACS_ALARM_INFO *)pAlarmInfo;
-	switch(lCommand)
-	{
-	case COMM_ALARM_ACS:
+	BOOL eventFlag = false;
+	BOOL alarmFlag = false;
+	char recvbuf[MAX_HTTP_LEN] = {0};
+	init_win_socket();
+	SOCKET sclient;
+	char ctx[1024] = {0};
+	time_t timestamp = 0;
+
+	if (lCommand == COMM_ALARM_ACS){
 		DWORD Major = alarminfo->dwMajor;
 		DWORD Minjor = alarminfo->dwMinor;
 		switch(Major)
 		{
-		case MAJOR_EVENT:
-			switch(Minjor){
-				case MINOR_LEGAL_CARD_PASS:
-					printf("合法卡认证通过\n");
-					printf("-----:CardNo:%s,time:%d-%d-%d\/%d:%d:%d\n",alarminfo->struAcsEventInfo.byCardNo,alarminfo->struTime.dwYear,alarminfo->struTime.dwMonth,alarminfo->struTime.dwDay,alarminfo->struTime.dwHour,alarminfo->struTime.dwMinute,alarminfo->struTime.dwSecond);
-					printf("-----:ReadCardtype:%d,DoorNo:%d,byDeviceNo:%d\n",alarminfo->struAcsEventInfo.byCardReaderKind,alarminfo->struAcsEventInfo.dwDoorNo,alarminfo->struAcsEventInfo.byDeviceNo);
-					break;
-				case MINOR_CARD_OUT_OF_DATE:
-					printf("卡号过期\n");
-					break;
-				case MINOR_LOCK_OPEN:
-					printf("门锁打开\n");
-					
-					break;
-				case MINOR_LOCK_CLOSE:
-					printf("门锁关闭\n");
-					break;
-				case MINOR_CARD_AND_PSW_PASS:
-					printf("刷卡加密码成功\n");
-					break;
-				case MINOR_CARD_AND_PSW_FAIL:
-					printf("刷卡加密码失败\n");
-					break;
-				case MINOR_INVALID_CARD:
-					printf("无此卡号\n");
-					break;
-			}
-		case MAJOR_ALARM:
-			switch(Minjor){
-				case MINOR_CASE_SENSOR_ALARM:
-				printf("事件输入报警\n");
+			case MAJOR_EVENT://事件
+				switch(Minjor){
+					case MINOR_LEGAL_CARD_PASS:
+						eventFlag = true;
+						printf("合法卡认证通过\n");
+						printf("-----:CardNo:%s,time:%d-%d-%d\/%d:%d:%d\n",alarminfo->struAcsEventInfo.byCardNo,alarminfo->struTime.dwYear,alarminfo->struTime.dwMonth,alarminfo->struTime.dwDay,alarminfo->struTime.dwHour,alarminfo->struTime.dwMinute,alarminfo->struTime.dwSecond);
+						printf("-----:ReadCardtype:%d,DoorNo:%d,byDeviceNo:%d\n",alarminfo->struAcsEventInfo.byCardReaderKind,alarminfo->struAcsEventInfo.dwDoorNo,alarminfo->struAcsEventInfo.byDeviceNo);
+						printf("-----:IPADDR:%s\n",alarminfo->struRemoteHostAddr.sIpV4);
+						break;
+					case MINOR_CARD_OUT_OF_DATE:
+						eventFlag = true;
+						printf("卡号过期\n");
+						break;
+					case MINOR_LOCK_OPEN:
+						printf("门锁打开\n");
+						break;
+					case MINOR_LOCK_CLOSE:
+						printf("门锁关闭\n");
+						break;
+					case MINOR_CARD_AND_PSW_PASS:
+						printf("刷卡加密码成功\n");
+						break;
+					case MINOR_CARD_AND_PSW_FAIL:
+						printf("刷卡加密码失败\n");
+						break;
+					case MINOR_INVALID_CARD:
+						printf("无此卡号\n");
+						break;
+					default:
+						break;
+				}
+			case MAJOR_ALARM://报警
+				switch(Minjor){
+					case MINOR_CASE_SENSOR_ALARM:
+						printf("事件输入报警\n");
+						break;
+					default:
+						break;
+				}
+				break;
+			default:
 				break;
 			}
-			break;
-		}
-		break;
 	}
+	/*
+	if (!eventFlag){
+		eventFlag = false;
+		char buf[64] = {0};
+		char timebuf[64];
+		if (connect_Hik(&sclient,"192.168.1.199",80) < 0){
+			printf("HandleCarNumber connect error\n");
+			return -1;
+		}
+		timestamp = time(0);
+		sprintf(timebuf,"%ld",timestamp);
+		strcpy(buf,timebuf);
+		strcat(buf+strlen(buf),salt);
+		sprintf(ctx,"{\"timestamp\":\"%s\",\"token\":\"%s\",\"card_num\":%s,\"ip\":\"%s\",\"channel\":\"%s\"}",timebuf,buf,alarminfo->struAcsEventInfo.byCardNo,alarminfo->struRemoteHostAddr.sIpV4,alarminfo->struAcsEventInfo.dwDoorNo);
+		send_recv_http(sclient,ctx,recvbuf,"192.168.1.104","80","/grid/access/open_record.php","Content-Type: application/json; charset=utf-8");
+		printf("RecvMsg:%s\n",recvbuf);
+		closesocket(sclient);
+		WSACleanup();
+	}
+	*/
+
+	
 	return true;
 }
