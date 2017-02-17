@@ -60,6 +60,7 @@
 				Name="VCLinkerTool"
 				AdditionalDependencies="ws2_32.lib"
 				AdditionalLibraryDirectories="&quot;C:\Users\gst\Desktop\海康设备对接\门禁控制主机\HikVison_Pro\Control-Test\Control-Test\lib\car&quot;;&quot;C:\Users\gst\Desktop\海康设备对接\门禁控制主机\HikVison_Pro\Control-Test\Control-Test\lib\event&quot;;&quot;C:\Users\gst\Desktop\海康设备对接\门禁控制主机\HikVison_Pro\Control-Test\Control-Test\lib\HIK&quot;"
+				IgnoreDefaultLibraryNames="libcmt.lib"
 				GenerateDebugInformation="true"
 				TargetMachine="1"
 			/>
@@ -165,6 +166,10 @@
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
 			>
 			<File
+				RelativePath=".\src\Card.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\Controll-test.cpp"
 				>
 			</File>
@@ -195,6 +200,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\include\Card.h"
+				>
+			</File>
+			<File
 				RelativePath=".\include\car\CarNumber.h"
 				>
 			</File>
@@ -211,11 +220,11 @@
 				>
 			</File>
 			<File
-				RelativePath=".\include\event2\event.h"
+				RelativePath=".\include\event\event2\event.h"
 				>
 			</File>
 			<File
-				RelativePath=".\include\event\event2\event.h"
+				RelativePath=".\include\event2\event.h"
 				>
 			</File>
 			<File

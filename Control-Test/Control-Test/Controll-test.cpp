@@ -10,6 +10,7 @@ const char *salt= "woareateam!!!";
 struct event_base *base;
 struct evhttp *http_server;
 NET_DVR_CARD_CFG_V50* g_pCardCfg;//获取数据
+map<char*, char*>   my_Map;
 
 void generic_handler(struct evhttp_request *req, void *arg)
 {
@@ -37,9 +38,16 @@ void generic_handler(struct evhttp_request *req, void *arg)
 		strcpy(httpstatus,"Get http body faild");
 		goto SendHttp;
 	}
+
+	evhttp_add_header(evhttp_request_get_output_headers(req), "Content-Type", "application/json; charset=utf-8");
 	if (reader.parse(body, rRoot) == false){
 		printf("parse http body faild\n");
 		strcpy(httpstatus,"parse http body faild");
+		goto SendHttp;
+	}
+	printf("---timestamp:%d\n",rRoot["timestamp"].asString().c_str());
+	if (rRoot["timestamp"].asString().c_str() == NULL){
+		strcpy(httpstatus,"get timestamp faild");
 		goto SendHttp;
 	}
 	if ((timestamp - atoi(rRoot["timestamp"].asString().c_str())) > 300){
@@ -52,6 +60,7 @@ void generic_handler(struct evhttp_request *req, void *arg)
 		strcpy(httpstatus,"Authentication failed");
 		goto SendHttp;
 	}
+
 	if (strstr(uri,"door")){ //门禁控制主机接口
 		if (strstr(uri,"control")){ 
 			printf("ip:%s,number:%s,commond:%s\n",rRoot["ip"].asString().c_str(),
@@ -68,12 +77,36 @@ void generic_handler(struct evhttp_request *req, void *arg)
 				goto SendHttp;
 			}
 		}else if (strstr(uri,"setconfig")){
-
+			
 		}else if (strstr(uri,"getconfig")){
-
+			
 		}
-	}else if (strstr(evhttp_request_get_uri(req),"card")){
-		
+	}else if (strstr(uri,"card")){//卡控制
+		if (strstr(uri,"setlist")){//卡设置
+			//OperatCardNoFun()
+			NET_DVR_CARD_CFG_V50 struCond = {0};
+			struCond.dwSize = sizeof(struCond);
+			if (HandleCardSet(rRoot,&struCond) == false){
+				strcpy(httpstatus,"get HandleCardSet faild");
+				goto SendHttp;
+			}
+			int i = 0;
+			for (i = 0; i < Thread_Params->wLen; i++){
+				if (strcmp(rRoot["ip"].asString().c_str(),Thread_Params->ip[i]) == 0){
+					break;
+				}
+			}
+			LONG lHandle = 0;
+			lHandle = OperatCardNoFun(Thread_Params->lUserID[i],CallBack,NET_DVR_SET_CARD_CFG_V50);
+			if (NET_DVR_SendRemoteConfig(lHandle,ENUM_ACS_SEND_DATA,(char *)&struCond,sizeof(struCond)) == FALSE){
+				strcpy(httpstatus,"set cardparam faild");
+				goto SendHttp;
+			}
+		}else if (strstr(uri,"getlist")){
+
+		}else if (strstr(uri,"find")){
+			
+		}
 	}
 SendHttp:
 	root["HttpStatus"] = Json::Value(httpstatus);
@@ -88,14 +121,45 @@ SendHttp:
 unsigned int __stdcall DoorThreadFun(PVOID pM)
 {	
 
-	test();
-
+	//test();
+	/**///初始化
+	NET_DVR_Init();
+	//设置连接时间和重连时间
+	NET_DVR_SetConnectTime(2000,1);
+	NET_DVR_SetReconnect(10000,true);
+	//-------------------------------
+	//注册设备
+	LONG lUserID,lHandle;
+	NET_DVR_USER_LOGIN_INFO struLoginInfo;
+	struLoginInfo.bUseAsynLogin = 0;//同步登录方式
+	strcpy(struLoginInfo.sDeviceAddress,"192.168.1.68");
+	struLoginInfo.wPort = 8000;
+	strcpy(struLoginInfo.sUserName,"admin");
+	strcpy(struLoginInfo.sPassword,"@vsea.tv");
+	//设备信息，输出参数
+	NET_DVR_DEVICEINFO_V40 struDeviceIndoV40 = {0};
+	if ((lUserID = NET_DVR_Login_V40(&struLoginInfo,&struDeviceIndoV40)) < 0){
+		printf("Login faild,error code:%d\n",NET_DVR_GetLastError());
+		NET_DVR_Cleanup();
+		return -1;
+	}
+	if (NET_DVR_SetupAlarmChan_V30(lUserID) < 0){
+		printf("SetupAlarmChan_V30 faild,errno:%d\n",NET_DVR_GetLastError());
+		return -1;
+	}
+	
+	if (NET_DVR_SetDVRMessageCallBack_V31(msgCallBack,NULL) == FALSE){
+		printf("------SetDVRMessageCallBack_V31:%d\n",NET_DVR_GetLastError());
+		return -1;
+	}
+	printf("-------------------------------------\n");
+	getchar();
 	printf(" child thread beginthread ID:%d,g_count:%d\n",GetCurrentThreadId(),g_count);
 	return 0;
 }
 unsigned int __stdcall CameraThreadFun(PVOID pM)
 {		
-/*
+/**/
 	int iRet = -1;
 	long m_login = 0;
 	CarNumber *pThis = new CarNumber();
@@ -107,7 +171,7 @@ getchar();
 	{
 		delete pThis;
 		pThis = NULL;
-	}*/
+	}
 
 	return 0;
 }
@@ -131,8 +195,8 @@ unsigned int __stdcall evThreadFun(PVOID pM)
 	Thread_Params->lUserID[0] = lUserID;
 	Thread_Params->ip[0] = "192.168.1.64";
 	Thread_Params->wLen = 1;
-	/*
-	lUserID = NET_DVR_Login_V30("192.168.1.66", 8000, "admin", "@vsea.tv", &struDeviceInfo);
+	/**/
+	lUserID = NET_DVR_Login_V30("192.168.1.68", 8000, "admin", "@vsea.tv", &struDeviceInfo);
 	if (lUserID < 0)
 	{
 	printf("Login error, %d\n", NET_DVR_GetLastError());
@@ -140,8 +204,8 @@ unsigned int __stdcall evThreadFun(PVOID pM)
 	return -1;
 	}
 	Thread_Params->lUserID[1] = lUserID;
-	Thread_Params->ip[1] = "192.168.1.66";
-	*/
+	Thread_Params->ip[1] = "192.168.1.68";
+	
 	//http server
 	event_base * base = event_base_new();
 	evhttp * http_server = evhttp_new(base);
@@ -216,13 +280,13 @@ int HandleCarNumber(char *id, char *time, int flags, char *ip)
 	char recvbuf[MAX_HTTP_LEN] = {0};
 	init_win_socket();
 	SOCKET sclient;
-	if (connect_Hik(&sclient,"192.168.1.106",8081) < 0){
+	if (connect_Hik(&sclient,"192.168.1.104",80) < 0){
 		printf("HandleCarNumber connect error\n");
 		return -1;
 	}
 	char ctx[1024] = {0};
 	sprintf(ctx,"{\"id\":\"%s\",\"time\":\"%s\",\"flags\":%d,\"ip\":\"%s\"}",id,time,flags,ip);
-	send_recv_http(sclient,ctx,recvbuf,"192.168.1.106","8081");
+	send_recv_http(sclient,ctx,recvbuf,"192.168.1.104","80");
 	closesocket(sclient);
 	WSACleanup();
 	return 1;
@@ -232,7 +296,7 @@ int send_recv_http(SOCKET sclient,char *jscontext,char *Out_Recv,const char *ip,
 {	
 	char sendbuf[MAX_HTTP_LEN] = {0};
 	char recvbuf[MAX_HTTP_LEN] = {0};
-	sprintf(sendbuf,"POST /jumbo/shihai/Home/api HTTP/1.1\r\nHost: %s:%s\r\nAccept: */*\r\nContent-type: application/json\r\nContent-Length: %d\r\n\r\n%s",ip,port,strlen(jscontext),jscontext);
+	sprintf(sendbuf,"POST /park/index.php/api/in HTTP/1.1\r\nHost: %s:%s\r\nAccept: */*\r\nContent-Type: application/x-www-form-urlencoded\r\nContent-Length: %d\r\n\r\n%s",ip,port,strlen(jscontext),jscontext);
 	if (send(sclient,sendbuf,strlen(sendbuf),0) < 0){
 		printf("send_recv_http send error\n");
 		return -1;
@@ -348,43 +412,36 @@ int test()
 		NET_DVR_Cleanup();
 		return -1;
 	}
-	NET_DVR_CARD_CFG_COND struCond = {0};
-	struCond.dwSize  = sizeof(struCond);
-	struCond.dwCardNum = 1;
-	struCond.byCheckCardNo = 1;
-	//struCond.wLocalControllerID = 2;
-	for (int i = 0; i < sizeof(struCond.byRes1)/sizeof(struCond.byRes1[0]); i++){
-		struCond.byRes1[i] = 0;
-	}
-	lHandle = NET_DVR_StartRemoteConfig(lUserID,NET_DVR_SET_CARD_CFG_V50,&struCond,sizeof(struCond),CallBack, NULL);
-	if (lHandle == -1)
-	{
-		printf("StartRemote faild:errno:%d\n",NET_DVR_GetLastError());
-		return -1;
-	}
-	else
-	{
-		printf("StartRemote success\n");
-	}
+
+
+	lHandle = OperatCardNoFun(lUserID,(void *)CallBack,NET_DVR_SET_CARD_CFG_V50);
 
 	/**/
 	NET_DVR_CARD_CFG_V50 SendCardCfg = {0};
 	SendCardCfg.dwSize = sizeof(SendCardCfg);
-	SendCardCfg.dwModifyParamType = CARD_PARAM_CARD_VALID|CARD_PARAM_VALID|CARD_PARAM_CARD_TYPE;
+	//SendCardCfg.dwModifyParamType = CARD_PARAM_CARD_VALID|CARD_PARAM_VALID|CARD_PARAM_CARD_TYPE|CARD_PARAM_DOOR_RIGHT|CARD_PARAM_RIGHT_PLAN;
+	SendCardCfg.dwModifyParamType = CARD_PARAM_RIGHT_PLAN|CARD_PARAM_DOOR_RIGHT;
 	BYTE CardNo[32] = {0};
-	strcpy((char *)CardNo,"1885276450");
+	strcpy((char *)CardNo,"3069606104");
 	memcpy((char *)SendCardCfg.byCardNo,CardNo,32);
+	//memcpy(SendCardCfg.byCardPassword,"88888888",8);
 	SendCardCfg.byCardValid = true;
 	SendCardCfg.byCardType = 1;
 	SendCardCfg.byLeaderCard = 0;
+	SendCardCfg.byDoorRight[1] = 1;
 	SendCardCfg.struValid.byEnable = 1;
+	SendCardCfg.wCardRightPlan[0][1] = 1;
+	SendCardCfg.wCardRightPlan[0][0] = 1;
+	SendCardCfg.wCardRightPlan[0][2] = 1;
+	SendCardCfg.wCardRightPlan[0][3] = 1;
+	SendCardCfg.wCardRightPlan[0][4] = 1;
 	SendCardCfg.struValid.struBeginTime.wYear = 2000;
 	SendCardCfg.struValid.struBeginTime.byMonth = 1;
 	SendCardCfg.struValid.struBeginTime.byDay = 1;
 	SendCardCfg.struValid.struBeginTime.byHour = 0;
 	SendCardCfg.struValid.struBeginTime.byMinute = 0;
 	SendCardCfg.struValid.struBeginTime.bySecond = 0;
-	SendCardCfg.struValid.struEndTime.wYear = 2017;
+	SendCardCfg.struValid.struEndTime.wYear = 2027;
 	SendCardCfg.struValid.struEndTime.byMonth = 02;
 	SendCardCfg.struValid.struEndTime.byDay = 16;
 	SendCardCfg.struValid.struEndTime.byHour = 0;
@@ -394,13 +451,7 @@ int test()
 		printf("-------SendRemoteConfig faild:errno:%d\n",NET_DVR_GetLastError());
 		return -1;
 	}
-	getchar();
 }
-
-
-
-
-
 void CALLBACK CallBack(DWORD dwType, void *lpBuffer, DWORD dwBufLen, void *pUserData)
 {
 	LONG UserData = 0;
@@ -416,7 +467,6 @@ void CALLBACK CallBack(DWORD dwType, void *lpBuffer, DWORD dwBufLen, void *pUser
 					printf("SUCCESS\n");
 					break;
 				case NET_SDK_CALLBACK_STATUS_PROCESSING:
-					
 					printf("NET_SDK_CALLBACK_STATUS_PROCESSING:%d\n",NET_DVR_GetLastError());
 					break;
 				case NET_SDK_CALLBACK_STATUS_FAILED:
@@ -445,4 +495,208 @@ void CALLBACK CallBack(DWORD dwType, void *lpBuffer, DWORD dwBufLen, void *pUser
 			printf("default\n");
 			break;
 	}
+}
+LONG OperatCardNoFun(LONG lUserID,void *CallBack,int type)
+{
+	NET_DVR_CARD_CFG_COND struCond = {0};
+	struCond.dwSize  = sizeof(struCond);
+	if (type == NET_DVR_GET_CARD_CFG_V50 || type == NET_DVR_GET_CARD_CFG){
+		struCond.dwCardNum = 0xffffffff;
+	}else{
+		struCond.dwCardNum = 1;
+	}
+	struCond.byCheckCardNo = 1; //校验
+	//struCond.wLocalControllerID = 2;
+	for (int i = 0; i < sizeof(struCond.byRes1)/sizeof(struCond.byRes1[0]); i++){
+		struCond.byRes1[i] = 0;
+	}
+	LONG lHandle = NET_DVR_StartRemoteConfig(lUserID,type,&struCond,sizeof(struCond),(fRemoteConfigCallback)CallBack, NULL);
+	if (lHandle == -1)
+	{
+		printf("StartRemote faild:errno:%d\n",NET_DVR_GetLastError());
+		return -1;
+	}
+	else
+	{
+		printf("StartRemote success\n");
+		return lHandle;
+	}
+}
+BOOL HandleCardSet(Json::Value rRoot,NET_DVR_CARD_CFG_V50 *struCond)
+{
+	char *tmp = NULL;
+	string SJson;
+	int Card_Vaild,Date_Vaild,Card_Type,Card_Passwd,LeaderCard,DoorRight,CardRightPlan;
+	SJson = rRoot["ModifyParamType"].asString();
+	tmp = (char *)(SJson.c_str());
+	if (tmp == NULL){
+		printf("get ModifyParamType faild\n");
+		return false;
+	}
+	int ModifyParamType = atoi(tmp);
+	Card_Vaild = CARD_PARAM_CARD_VALID & ModifyParamType;   //卡有效
+	Date_Vaild = CARD_PARAM_VALID & ModifyParamType;	    //有效期参数
+	Card_Type = CARD_PARAM_CARD_TYPE & ModifyParamType;		//卡类型
+	Card_Passwd = CARD_PARAM_PASSWORD & ModifyParamType;	//卡密码
+	LeaderCard = CARD_PARAM_LEADER_CARD & ModifyParamType;	//首卡
+	DoorRight = CARD_PARAM_DOOR_RIGHT & ModifyParamType;	//门权限
+	CardRightPlan = CARD_PARAM_RIGHT_PLAN & ModifyParamType;//卡权限计划参数
+	SJson = rRoot["channel"].asString();
+	if ((tmp = (char *)SJson.c_str()) == NULL){
+		printf("get channel faild\n");
+		return false;
+	}
+	int DoorNo = atoi(tmp);
+	struCond->dwModifyParamType = ModifyParamType;
+	SJson = rRoot["CardNo"].asString();
+	if (SJson.c_str() == NULL){
+		printf("get CardNo faild\n");
+		return false;
+	}
+	strcpy((char *)struCond->byCardNo,SJson.c_str());//获取卡号
+	SJson = rRoot["CardValid"].asString();
+	if (Card_Vaild){
+		if ((tmp = (char *)SJson.c_str()) == NULL){
+			printf("get CardVaild faild\n");
+			return false;
+		}
+		struCond->byCardValid = atoi(tmp);
+	}else {
+		struCond->byCardValid = 1;//默认有效
+	}
+	SJson = rRoot["CardType"].asString();
+	if (Card_Type){//默认是空白卡
+		if ((tmp = (char *)SJson.c_str()) == NULL){
+			printf("get CardType faild\n");
+			return false;
+		}
+		struCond->byCardType = atoi(tmp);
+	}else {
+		struCond->byCardType =0;
+	}
+	SJson = rRoot["LeaderCard"].asString();
+	if (LeaderCard){ //默认是非首卡
+		if ((tmp = (char *)SJson.c_str()) == NULL){
+			printf("get LeaderCard faild\n");
+			return false;
+		}
+		struCond->byLeaderCard = atoi(tmp);
+	}else{
+		struCond->byLeaderCard = 0;
+	}
+	SJson = rRoot["ValidEnable"].asString();
+	if (Date_Vaild){//默认是不使能日期
+		if ((tmp = (char *)SJson.c_str()) == NULL){
+			printf("get ValidEnable faild\n");
+			return false;
+		}
+		struCond->struValid.byEnable = atoi(tmp);
+		if ((rRoot["ValidBeginTime"].asString().c_str() == NULL) || (rRoot["ValidEndTime"].asString().c_str() == NULL)){
+			printf("get ValidBeginTime faild\n");
+			return false;
+		}
+		GetDateTime((char *)rRoot["ValidBeginTime"].asString().c_str(),&(struCond->struValid.struBeginTime));
+		GetDateTime((char *)rRoot["ValidEndTime"].asString().c_str(),&(struCond->struValid.struEndTime));
+	}else {
+		struCond->struValid.byEnable = 0;
+	}
+	SJson = rRoot["DoorRight"].asString();
+	if (DoorRight){//门权限
+		if ((tmp = (char *)SJson.c_str()) == NULL){
+			printf("get DoorRight faild\n");
+			return false;
+		}
+		struCond->byDoorRight[DoorNo] = atoi(tmp);
+	}else{
+		struCond->byDoorRight[DoorNo] = 0;
+	}
+	SJson = rRoot["CardRightPlan"].asString();
+	if (CardRightPlan){ //门权限计划
+		if ((tmp = (char *)SJson.c_str()) == NULL){
+			printf("get CardRightPlan faild\n");
+			return false;
+		}
+		(struCond->wCardRightPlan)[DoorNo-1][0] = atoi(tmp);
+		(struCond->wCardRightPlan)[DoorNo-1][1] = atoi(tmp);
+		(struCond->wCardRightPlan)[DoorNo-1][2] = atoi(tmp);
+		(struCond->wCardRightPlan)[DoorNo-1][3] = atoi(tmp);
+	}else{
+		(struCond->wCardRightPlan)[DoorNo-1][0] = 0;
+	}
+	return true;
+}
+//2017-02-16/12:13:34
+void GetDateTime(char *aTime, NET_DVR_TIME_EX *Date)
+{
+	char four[5];
+	memset(four,0,sizeof(four));
+	memcpy(four,aTime,4);
+	Date->wYear = atoi(four);
+	memset(four,0,sizeof(four));
+	memcpy(four,aTime+5,2);
+	Date->byMonth = atoi(four);
+	memset(four,0,sizeof(four));
+	memcpy(four,aTime+8,2);
+	Date->byDay = atoi(four);
+	memset(four,0,sizeof(four));
+	memcpy(four,aTime+11,2);
+	Date->byHour = atoi(four);
+	memset(four,0,sizeof(four));
+	memcpy(four,aTime+14,2);
+	Date->byMinute = atoi(four);
+	memset(four,0,sizeof(four));
+	memcpy(four,aTime+17,2);
+	Date->bySecond = atoi(four);
+}
+
+
+
+BOOL CALLBACK msgCallBack(LONG lCommand, NET_DVR_ALARMER *pAlarmer, char *pAlarmInfo, DWORD dwBufLen, void* pUser)
+{
+	NET_DVR_ACS_ALARM_INFO *alarminfo= (NET_DVR_ACS_ALARM_INFO *)pAlarmInfo;
+	switch(lCommand)
+	{
+	case COMM_ALARM_ACS:
+		DWORD Major = alarminfo->dwMajor;
+		DWORD Minjor = alarminfo->dwMinor;
+		switch(Major)
+		{
+		case MAJOR_EVENT:
+			switch(Minjor){
+				case MINOR_LEGAL_CARD_PASS:
+					printf("合法卡认证通过\n");
+					printf("-----:CardNo:%s,time:%d-%d-%d\/%d:%d:%d\n",alarminfo->struAcsEventInfo.byCardNo,alarminfo->struTime.dwYear,alarminfo->struTime.dwMonth,alarminfo->struTime.dwDay,alarminfo->struTime.dwHour,alarminfo->struTime.dwMinute,alarminfo->struTime.dwSecond);
+					printf("-----:ReadCardtype:%d,DoorNo:%d,byDeviceNo:%d\n",alarminfo->struAcsEventInfo.byCardReaderKind,alarminfo->struAcsEventInfo.dwDoorNo,alarminfo->struAcsEventInfo.byDeviceNo);
+					break;
+				case MINOR_CARD_OUT_OF_DATE:
+					printf("卡号过期\n");
+					break;
+				case MINOR_LOCK_OPEN:
+					printf("门锁打开\n");
+					
+					break;
+				case MINOR_LOCK_CLOSE:
+					printf("门锁关闭\n");
+					break;
+				case MINOR_CARD_AND_PSW_PASS:
+					printf("刷卡加密码成功\n");
+					break;
+				case MINOR_CARD_AND_PSW_FAIL:
+					printf("刷卡加密码失败\n");
+					break;
+				case MINOR_INVALID_CARD:
+					printf("无此卡号\n");
+					break;
+			}
+		case MAJOR_ALARM:
+			switch(Minjor){
+				case MINOR_CASE_SENSOR_ALARM:
+				printf("事件输入报警\n");
+				break;
+			}
+			break;
+		}
+		break;
+	}
+	return true;
 }
