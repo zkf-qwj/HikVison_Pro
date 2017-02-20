@@ -5,8 +5,9 @@ short          http_port = 8081;
 char          *http_addr = "192.168.1.108";
 struct event_base *base;
 struct evhttp *http_server;
-
-
+/*
+http服务器回调函数
+*/
 void generic_handler(struct evhttp_request *req, void *arg)
 {
 	char md5buf[64] = {0};
@@ -124,6 +125,9 @@ SendHttp:
 
 
 }
+/*
+FunctionName:DoorThreadFun 门禁控制主机线程回调函数
+*/
 unsigned int __stdcall DoorThreadFun(PVOID pM)
 {	
 
@@ -164,6 +168,9 @@ unsigned int __stdcall DoorThreadFun(PVOID pM)
 
 	return 0;
 }
+/*
+FunctionName:CameraThreadFun 汽车出入口线程回调函数
+*/
 unsigned int __stdcall CameraThreadFun(PVOID pM)
 {		
 	/*
@@ -182,6 +189,9 @@ unsigned int __stdcall CameraThreadFun(PVOID pM)
 
 	return 0;
 }
+/*
+FunctionName:IDReaderFun 读卡器线程回调函数
+*/
 unsigned int __stdcall IDReaderFun(PVOID pM)
 {
 	IDReader *pThis = new IDReader();
@@ -189,6 +199,9 @@ unsigned int __stdcall IDReaderFun(PVOID pM)
 	printf("----IDReader Thread....\n");
 	return 0;
 }
+/*
+FunctionName:evThreadFun libeventhttp线程回调函数
+*/
 unsigned int __stdcall evThreadFun(PVOID pM)
 {
 	NET_DVR_Init();

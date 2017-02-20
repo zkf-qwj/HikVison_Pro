@@ -1,7 +1,12 @@
 #include "CardManagement.h"
 
-NET_DVR_CARD_CFG_V50* g_pCM_CardCfg;//获取数据
-
+NET_DVR_CARD_CFG_V50 *g_pCM_CardCfg;//获取数据
+/*
+FunctionName:CM_SetOrGetCardNoFun
+lUserID:登录返回值
+CallBack: StartRemote 的回掉函数
+type:NET_DVR_GET_CARD_CFG_V50(获取门禁所以名单的信息),NET_DVR_SET_CARD_CFG_V50(增加或修改指定的一个卡信息)
+*/
 LONG CM_SetOrGetCardNoFun(LONG lUserID,void *CallBack,int type)
 {
 	NET_DVR_CARD_CFG_COND struCond = {0};
@@ -28,6 +33,11 @@ LONG CM_SetOrGetCardNoFun(LONG lUserID,void *CallBack,int type)
 		return lHandle;
 	}
 }
+/*
+FunctionName：CM_GetDateTime 将字符串2017-02-16/12:13:34，对应的年月日时分秒析成整型
+aTime:字符串类型，2017-02-16/12:13:34
+Date：出参NET_DVR_TIME_EX结构体
+*/
 //2017-02-16/12:13:34
 void CM_GetDateTime(char *aTime, NET_DVR_TIME_EX *Date)
 {
@@ -51,7 +61,12 @@ void CM_GetDateTime(char *aTime, NET_DVR_TIME_EX *Date)
 	memcpy(four,aTime+17,2);
 	Date->bySecond = atoi(four);
 }
-
+/*
+FunctionName:CM_HandleCardSet 修改或添加卡号的时候，对NET_DVR_CARD_CFG_V50卡结构体赋值
+rRoot：json字符串，从WebServer接收到的数据
+struCond：出参NET_DVR_CARD_CFG_V50结构体
+若想使卡片在门禁一体机上验证成功要保证，卡有效，对门有权限，门禁计划有效，在有效期内，删除卡的时候必须加上卡校验，否则删不掉
+*/
 BOOL CM_HandleCardSet(Json::Value rRoot,NET_DVR_CARD_CFG_V50 *struCond)
 {
 	string SJson;
@@ -194,6 +209,10 @@ BOOL CM_HandleCardSet(Json::Value rRoot,NET_DVR_CARD_CFG_V50 *struCond)
 	}
 	return true;
 }
+/*
+FunctionName：CM_RemoteCallBack StartRemote的回调函数
+参数的含义看海康SDK文档
+*/
 void CALLBACK CM_RemoteCallBack(DWORD dwType, void *lpBuffer, DWORD dwBufLen, void *pUserData)
 {
 	LONG UserData = 0;
@@ -238,7 +257,9 @@ void CALLBACK CM_RemoteCallBack(DWORD dwType, void *lpBuffer, DWORD dwBufLen, vo
 			break;
 	}
 }
-
+/*
+FunctionName：CM_AlarmCallBack  布防回调函数，具体看文档
+*/
 BOOL CALLBACK CM_AlarmCallBack(LONG lCommand, NET_DVR_ALARMER *pAlarmer, char *pAlarmInfo, DWORD dwBufLen, void* pUser)
 {
 	NET_DVR_ACS_ALARM_INFO *alarminfo= (NET_DVR_ACS_ALARM_INFO *)pAlarmInfo;
