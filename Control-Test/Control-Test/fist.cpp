@@ -6,7 +6,7 @@ int g_count = 0;
 LONG g_DlUserID = 0;
 LONG g_ClUserID = 0;
 short          http_port = 8081;
-char          *http_addr = "192.168.1.106";
+char          *http_addr = "192.168.1.108";
 struct event_base *base;
 struct evhttp *http_server;
 
@@ -114,7 +114,7 @@ NET_DVR_Init();
 NET_DVR_SetConnectTime(2000, 1);
 LONG lUserID;
 short          http_port = 8081;
-char          *http_addr = "192.168.1.106";
+char          *http_addr = "192.168.1.108";
 
 NET_DVR_DEVICEINFO_V30 struDeviceInfo;
 

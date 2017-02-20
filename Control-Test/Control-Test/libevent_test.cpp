@@ -58,7 +58,7 @@ init_win_socket();
 #endif
 
 short          http_port = 8081;
-char          *http_addr = "192.168.1.106";
+char          *http_addr = "192.168.1.108";
 
 struct event_base * base = event_base_new();
 

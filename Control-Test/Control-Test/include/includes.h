@@ -8,6 +8,7 @@
 #include <map>
 using namespace std;
 
+
 #include "json/autolink.h"
 #include "json/config.h"
 #include "json/features.h"
@@ -25,6 +26,17 @@ using namespace std;
 #include "event2/util.h"
 #include "event2/event.h"
 #include "event2/http.h"
+
+//段
+#include "CarNumber.h"
+#include "IDReader.h"
+#include "sdtapi.h"
+//自己
+/*
+#include "ReadCard.h"
+#include "Threads.h"
+#include "CardManagement.h"
+*/
 #pragma comment(lib,"libevent_core.lib")
 #pragma comment(lib,"libevent_extras.lib")
 #pragma comment(lib,"libevent.lib")
@@ -54,18 +66,20 @@ typedef struct
 	char *sPassword[MAX_DEVICE_LEN];
 	LPNET_DVR_DEVICEINFO_V30 lpDeviceInfo[MAX_DEVICE_LEN];
 }Login_params;
+//自定义全局变量
+//const char *salt= "woareateam!!!";
+#define salt "woareateam!!!"
+/*********
+
+*********/
 int init_win_socket();
 int Login_Init(Login_params *LP_Params,WORD num,LONG *lOutUserID);
 int HandleCarNumber(char *id, char *time, int flags, char *ip);//出入口回调函数
 int connect_Hik(SOCKET *sclient, char *ip, int port);//连接http服务器
 int send_recv_http(SOCKET sclient,char *jscontext,char *Out_Recv,const char *ip, const char *port, const char *path,const char *contenttype);//发送http请求，并接收请求结果
 int GetHttpBody(struct evhttp_request *req, char *outBody,int outLen);//获取http body
-LONG OperatCardNoFun(LONG lUserID,void *CallBack,int type);//获取所有卡id
-void CALLBACK CallBack(DWORD dwType, void *lpBuffer, DWORD dwBufLen, void *pUserData);//长连接StartRemoteConfigint
-void CALLBACK CallBack_v1(DWORD dwType, void *lpBuffer, DWORD dwBufLen, void *pUserData);
 int test();
-BOOL HandleCardSet(Json::Value rRoot,NET_DVR_CARD_CFG_V50 *struCond);
-void GetDateTime(char *aTime, NET_DVR_TIME_EX *Date);
-BOOL CALLBACK msgCallBack(LONG lCommand, NET_DVR_ALARMER *pAlarmer, char *pAlarmInfo, DWORD dwBufLen, void* pUser);
+
+
 
 #endif
