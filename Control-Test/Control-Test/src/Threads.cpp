@@ -5,6 +5,7 @@ short          http_port = 8081;
 char          *http_addr = "192.168.1.108";
 struct event_base *base;
 struct evhttp *http_server;
+
 /*
 http服务器回调函数
 */
@@ -130,9 +131,7 @@ FunctionName:DoorThreadFun 门禁控制主机线程回调函数
 */
 unsigned int __stdcall DoorThreadFun(PVOID pM)
 {	
-
-	//	test();
-	/**///初始化
+	
 	NET_DVR_Init();
 	//设置连接时间和重连时间
 	NET_DVR_SetConnectTime(2000,1);
@@ -142,6 +141,7 @@ unsigned int __stdcall DoorThreadFun(PVOID pM)
 	LONG lUserID = 0,lHandle = 0;
 	NET_DVR_USER_LOGIN_INFO struLoginInfo;
 	struLoginInfo.bUseAsynLogin = 0;//同步登录方式
+
 	strcpy(struLoginInfo.sDeviceAddress,"192.168.1.68");
 	struLoginInfo.wPort = 8000;
 	strcpy(struLoginInfo.sUserName,"admin");
@@ -209,30 +209,28 @@ unsigned int __stdcall evThreadFun(PVOID pM)
 	pthread_t *Thread_Params = (pthread_t *)malloc(sizeof(pthread_t));
 	if (NULL == Thread_Params){
 		printf("malloc error in evThreadFun\n");
-		return -1;
+		return 1;
 	}
+	if (pM == NULL){
+		printf("Login Param is NULL for evThreadFun\n");
+		return 1;
+	}
+	ConfigFile *DoorParam = (ConfigFile *)pM;
+	int count  = 0;
 	NET_DVR_DEVICEINFO_V30 struDeviceInfo;
-	LONG lUserID = NET_DVR_Login_V30("192.168.1.64", 8000, "admin", "@vsea.tv", &struDeviceInfo);
-	if (lUserID < 0)
-	{
-		printf("Door Login error, %d\n", NET_DVR_GetLastError());
-		NET_DVR_Cleanup();
-		return -1;
+	while(strcmp(DoorParam[count].KeyName[0],"total")){
+		LONG lUserID = NET_DVR_Login_V30(DoorParam[count].Value[0],atoi(DoorParam[count].Value[3]), (DoorParam[count]).Value[1], (DoorParam[count]).Value[2], &struDeviceInfo);
+		if (lUserID < 0)
+		{
+			printf("Door Login error, %d\n", NET_DVR_GetLastError());
+			NET_DVR_Cleanup();
+			//return -1;
+		}
+		Thread_Params->lUserID[count] = lUserID;
+		Thread_Params->ip[count] = (DoorParam[count].Value)[0];
+		count++;
 	}
-	Thread_Params->lUserID[0] = lUserID;
-	Thread_Params->ip[0] = "192.168.1.64";
-
-	/**/
-	lUserID = NET_DVR_Login_V30("192.168.1.68", 8000, "admin", "@vsea.tv", &struDeviceInfo);
-	if (lUserID < 0)
-	{
-		printf("Login error, %d\n", NET_DVR_GetLastError());
-		NET_DVR_Cleanup();
-		return -1;
-	}
-	Thread_Params->lUserID[1] = lUserID;
-	Thread_Params->ip[1] = "192.168.1.68";
-	Thread_Params->wLen = 2;
+	Thread_Params->wLen = count;
 	//http server
 	event_base * base = event_base_new();
 	evhttp * http_server = evhttp_new(base);

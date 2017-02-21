@@ -1,0 +1,14 @@
+read ip:2
+read ip:192.168.1.64
+read ip:admin
+read ip:@vsea.tv
+read ip:8000
+read ip:192.168.1.68
+read ip:admin
+read ip:@vsea.tv
+read ip:8000
+it is  flush
+i am in the ReadIC
+Authenticate is failed
+-------------------------------------
+http server start OK! 

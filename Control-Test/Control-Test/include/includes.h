@@ -51,6 +51,7 @@ using namespace std;
 //thread args
 typedef struct {
 	LONG lUserID[20];
+	LONG lUSBID[20];
 	WORD wLen;
 	WORD wCommand;
 	void *arg;
@@ -66,6 +67,13 @@ typedef struct
 	char *sPassword[MAX_DEVICE_LEN];
 	LPNET_DVR_DEVICEINFO_V30 lpDeviceInfo[MAX_DEVICE_LEN];
 }Login_params;
+typedef struct  
+{
+	char *KeyName[64];
+	char Value[64][265];
+	int len;
+} ConfigFile;
+
 //自定义全局变量
 //const char *salt= "woareateam!!!";
 #define salt "woareateam!!!"
@@ -80,6 +88,7 @@ int send_recv_http(SOCKET sclient,char *jscontext,char *Out_Recv,const char *ip,
 int GetHttpBody(struct evhttp_request *req, char *outBody,int outLen);//获取http body
 int test();
 
+int ReadConfig(char *ConfigFileName,char *Section,ConfigFile *OutParam);
 
 
 #endif

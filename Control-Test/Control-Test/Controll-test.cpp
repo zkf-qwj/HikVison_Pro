@@ -3,27 +3,53 @@
 #include "Threads.h"
 #include "CardManagement.h"
 
+//#pragma comment( linker, "/subsystem:\"windows\" /entry:\"mainCRTStartup\"" )
+
 int iNum = 0;
 int g_count = 0;
 LONG g_DlUserID = 0;
 LONG g_ClUserID = 0;
 
+ConfigFile DoorParam[64] = {0};     //门禁控制主机
+ConfigFile DoorNum = {0};     //门禁控制主机总数
 
 void main()
 {
+	char *ConfigFileName = "IbuguCfgsysterm.ini"; //配置文件
+	DoorNum.KeyName[0] = "total";
+	DoorNum.len = 1;
+	if (ReadConfig("IbuguCfgsysterm.ini","NUM",&DoorNum) < 0){
+		printf("read config file faild\n");
+		return ;
+	}
+	int i = 0;
+	for (i = 0; i < atoi(DoorNum.Value[0]); i++){
+		char Section[64] = "DOOR";
+		DoorParam[i].KeyName[0] = "ip";
+		DoorParam[i].KeyName[1] = "Username";
+		DoorParam[i].KeyName[2] = "password";
+		DoorParam[i].KeyName[3] = "port";
+		DoorParam[i].len = 4;
+		sprintf(Section+strlen(Section),"%d",i);
+		if (ReadConfig("IbuguCfgsysterm.ini",Section,&(DoorParam[i])) < 0){
+			printf("read config file faild\n");
+			return ;
+		}
+	}
+	DoorParam[i] = DoorNum;
+
 	init_win_socket();
 	NET_DVR_Init();
 	NET_DVR_SetConnectTime(2000, 1);
-	short          http_port = 8081;
-	char          *http_addr = "192.168.1.108";
 	//创建线程
 	const int THREAD_NUM = 4;
 	HANDLE handle[THREAD_NUM]; 
 	handle[0] =  (HANDLE)_beginthreadex(NULL, 0, CameraThreadFun, NULL, 0, NULL);
 	handle[1] =  (HANDLE)_beginthreadex(NULL, 0, DoorThreadFun, NULL, 0, NULL);
-	handle[2] =  (HANDLE)_beginthreadex(NULL, 0, evThreadFun,NULL, 0, NULL);
+	handle[2] =  (HANDLE)_beginthreadex(NULL, 0, evThreadFun,DoorParam, 0, NULL);
 	handle[3] =  (HANDLE)_beginthreadex(NULL, 0, IDReaderFun,NULL, 0, NULL);
-	WaitForMultipleObjects(THREAD_NUM, handle, TRUE ,INFINITE); 
+	WaitForMultipleObjects(THREAD_NUM, handle, TRUE ,INFINITE);
+
 	return;
 }
 
@@ -147,6 +173,37 @@ int GetHttpBody(struct evhttp_request *req, char *outBody,int outLen){
 	}
 	return 0;
 }
+/*
+读取配置文件
+*/
+int ReadConfig(char *ConfigFileName,char *Section,ConfigFile *OutParam)
+{
+	char *ch = NULL;
+	char PathBuf[1024];
+	memset(PathBuf, 0, 1024);
+	GetModuleFileName(NULL, PathBuf, 1024);
+	ch = strrchr(PathBuf, '\\');
+	if (!ch){
+		return -1;	
+	}
+	PathBuf[strlen(PathBuf) - strlen(ch)+1] = '\0';
+	
+	strcat_s(PathBuf, 1024, ConfigFileName);
+	char buf[1024] = {0};
+	for (int i = 0; i < OutParam->len; i++){
+
+		::GetPrivateProfileString(Section, (LPCSTR)(OutParam->KeyName)[i], "",(OutParam->Value)[i] , sizeof((OutParam->Value)[i]),PathBuf);
+		//::GetPrivateProfileString("DOOR", "ip", "",buf , sizeof(buf),PathBuf);
+		if(strlen((OutParam->Value)[i]) == 0){
+			printf("Config file read faild\n");
+			return -1;
+		}
+		printf("read ip:%s\n",OutParam->Value[i]);
+	}
+	return 0;
+}
+
+
 
 
 
@@ -183,6 +240,14 @@ int JsonEncode(){
 
 	return 0;
 }
+
+
+
+
+
+
+
+
 
 int test()
 {
